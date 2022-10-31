@@ -2,12 +2,19 @@
 base_region = "ap-southeast-2"
 
 # Gitlab variables
-gitlab_idp = true
+gitlab_idp   = true
+gitlab_role  = true
+gitlab_match = "project_path:yourgroup/*:ref_type:branch:ref:*"
+gitlab_field = "sub"
 
 # Github Variables
-github_idp = true
+github_idp   = true
+github_role  = true
+github_match = "repo:yourorg/*:*"
+github_field = "sub"
 
 # Bitbucket Variables
 bitbucket_idp           = true
+bitbucket_role          = true
 bitbucket_workspace     = "yourworkspace"
 bitbucket_workspaceuuid = "unique-workspace-uuid-without-curly-braces"

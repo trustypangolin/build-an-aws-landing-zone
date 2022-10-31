@@ -18,5 +18,49 @@
   {
     "ParameterKey": "BitbucketWorkspaceUUID",
     "ParameterValue": "unique-workspace-uuid-without-curly-braces"
+  },
+  {
+    "ParameterKey": "BootstrapPrefix",
+    "ParameterValue": "foundation"
+  },
+  {
+    "ParameterKey": "OIDCRole",
+    "ParameterValue": "oidc"
+  },
+  {
+    "ParameterKey": "GitLabRoleEnabled",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "BitbucketRoleEnabled",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "GitHubRoleEnabled",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "GitLabGroup",
+    "ParameterValue": "yourorganisation"
+  },
+  {
+    "ParameterKey": "GitLabProject",
+    "ParameterValue": "*"
+  },
+  {
+    "ParameterKey": "GitLabIdPUrl",
+    "ParameterValue": "https://gitlab.com"
+  },
+  {
+    "ParameterKey": "GitLabIdPAud",
+    "ParameterValue": "https://gitlab.com"
+  },
+  {
+    "ParameterKey": "GitHubOrg",
+    "ParameterValue": "yourorganisation"
+  },
+  {
+    "ParameterKey": "GitHubRepo",
+    "ParameterValue": "*"
   }
 ]

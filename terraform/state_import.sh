@@ -12,6 +12,7 @@ else
   echo "var is set to '$ACCOUNTID'"; 
 fi
 
+terraform import 'aws_iam_role.foundation_oidc' foundation-oidc
 terraform import 'aws_iam_openid_connect_provider.github["github"]' arn:aws:iam::${ACCOUNTID}:oidc-provider/token.actions.githubusercontent.com
 terraform import 'aws_iam_openid_connect_provider.gitlab["gitlab"]' arn:aws:iam::${ACCOUNTID}:oidc-provider/gitlab.com
 

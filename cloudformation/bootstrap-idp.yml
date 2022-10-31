@@ -52,28 +52,97 @@ Parameters:
     Description: Bootstrap the GitHub IdP
     AllowedValues: [true, false]
 
+  # Role Specifics
+  BootstrapPrefix:
+    Type: String
+    Default: "foundation"
+    Description: To match customer naming polices, we create a Landing Zone prefix for state, role, dynamodb resources. Typically foundation,bedrock,landingzone etc
+  OIDCRole:
+    Type: String
+    Default: "oidc"
+    Description: Entry role suffix appended to bootstrap_prefix. This needs to match the OpenID initial Role
+  GitLabRoleEnabled:
+    Type: String
+    Default: false
+    Description: Add the GitLab Bootstrap the Role Trust
+    AllowedValues: [true, false]
+  BitbucketRoleEnabled:
+    Type: String
+    Default: false
+    Description: Add the Bitbucket Bootstrap the Role Trust
+    AllowedValues: [true, false]
+  GitHubRoleEnabled:
+    Type: String
+    Default: false
+    Description: Add the GitHub Bootstrap the Role Trust
+    AllowedValues: [true, false]
+
+  # Repository Match Variables
+  GitLabGroup:
+    Type: String
+    Default: "organisationname"
+    Description: GitLab Group
+  GitLabProject:
+    Type: String
+    Default: "*"
+    Description: GitLab Project with access to Role, Defaults to all
+  GitHubOrg:
+    Type: String
+    Default: "organisationname"
+    Description: GitHub Organisation Name
+  GitHubRepo:
+    Type: String
+    Default: "*"
+    Description: GitHub Repos with access to Role, Defaults to all
+
 #====================================================================================================
 #                                             METADATA
 #====================================================================================================
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
+      # Which IdP should be deployed. This is optional, they may already exist
       - Label:
           default: Active IdP
         Parameters:
           - GitLabIdPEnable
           - GitHubIdPEnable
           - BitbucketIdPEnable
+
+      # GitLab Trust Filter. Which GitLab Groups and Projects can access this Role
       - Label:
-          default: Bitbucket Workspace (Only required for Bitbucket)
+          default: GitLab Namespace and Repo Match (Only required for GitLab)
         Parameters:
-          - BitbucketWorkspaceName
-          - BitbucketWorkspaceUUID
+          - GitLabGroup
+          - GitLabProject
       - Label:
-          default: GitLab SelfHosted (Only change defaults for SelfHosted GitLab)
+          default: GitLab SelfHosted (Only change defaults for SelfHosted GitLab - This CloudFormation will need the SelfHosted URL manually added to the Condition Key)
         Parameters:
           - GitLabIdPUrl
           - GitLabIdPAud
+
+      # GitHub Trust Filter. Which GitHub Org and Repos can access this Role
+      - Label:
+          default: GitHub Org and Repo Match (Only required for GitHub)
+        Parameters:
+          - GitHubOrg
+          - GitHubRepo
+
+      # Bitbucket Workspace Name and UUID. Which Workspaces can access this Role
+      - Label:
+          default: Bitbucket Workspace (Only required for Bitbucket - This CloudFormation will need the Worksppace Name manually added to the Condition Key)
+        Parameters:
+          - BitbucketWorkspaceName
+          - BitbucketWorkspaceUUID
+
+      - Label:
+          default: IAM Role Settings
+        Parameters:
+          - BootstrapPrefix
+          - OIDCRole
+          - GitLabRoleEnabled
+          - BitbucketRoleEnabled
+          - GitHubRoleEnabled
 
 #====================================================================================================
 #                                             Conditions
@@ -84,6 +153,10 @@ Conditions:
   IsBitbucketIdPEnabled: !Equals [!Ref BitbucketIdPEnable, true]
   IsGitHubIdPEnabled: !Equals [!Ref GitHubIdPEnable, true]
 
+  # Add the IdP to the Role Trust
+  IsGitLabRoleEnabled: !Equals [!Ref GitLabRoleEnabled, true]
+  IsBitbucketRoleEnabled: !Equals [!Ref BitbucketRoleEnabled, true]
+  IsGitHubRoleEnabled: !Equals [!Ref GitHubRoleEnabled, true]
 #====================================================================================================
 #                                             Resources
 #====================================================================================================
@@ -126,3 +199,63 @@ Resources:
         - 6938fd4d98bab03faadb97b34396831e3780aea1
       ClientIdList:
         - sts.amazonaws.com
+
+  #====================================================================================================
+  #                                             Entry Role
+  #====================================================================================================
+  FoundationBootstrapRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${BootstrapPrefix}-${OIDCRole}"
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Allow GitHub to Assume this role via OIDC
+          - !If
+            - IsGitHubRoleEnabled
+            - Sid: "AllowGitHub"
+              Effect: Allow
+              Action: sts:AssumeRoleWithWebIdentity
+              Principal: !If
+                - IsGitHubIdPEnabled
+                - Federated: !Ref GitHubOIDC
+                - Federated: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+              Condition:
+                StringLike:
+                  token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${GitHubRepo}:*
+            - !Ref "AWS::NoValue"
+
+          # Allow GitLab to Assume this role via OIDC
+          - !If
+            - IsGitLabRoleEnabled
+            - Sid: "AllowGitLab"
+              Effect: Allow
+              Action: sts:AssumeRoleWithWebIdentity
+              Principal: !If
+                - IsGitLabIdPEnabled
+                - Federated: !Ref GitLabOIDC
+                - Federated: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/${GitLabIdPUrl}"
+              Condition:
+                StringLike:
+                  # MODIFY THIS BLOCK FOR GITLAB SELFHOSTED ###########
+                  gitlab.com:sub: !Sub project_path:${GitLabGroup}/${GitLabProject}:*
+                  # MODIFY THIS BLOCK FOR GITLAB SELFHOSTED ###########
+            - !Ref "AWS::NoValue"
+
+          # Allow Bitbucket to Assume this role via OIDC
+          - !If
+            - IsBitbucketRoleEnabled
+            - Sid: "AllowBitbucket"
+              Effect: Allow
+              Action: sts:AssumeRoleWithWebIdentity
+              Principal: !If
+                - IsBitbucketIdPEnabled
+                - Federated: !Ref BitbucketOIDC
+                - Federated: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/api.Bitbucket.org/2.0/workspaces/${BitbucketWorkspaceName}/pipelines-config/identity/oidc"
+              Condition:
+                StringLike:
+                  # MODIFY THIS BLOCK FOR BITBUCKET ###########
+                  api.Bitbucket.org/2.0/workspaces/######yourworkspace######/pipelines-config/identity/oidc:aud: !Sub "ari:cloud:bitbucket::workspace/${BitbucketWorkspaceUUID}"
+                  # MODIFY THIS BLOCK FOR BITBUCKET ###########
+            - !Ref "AWS::NoValue"
