@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "GitLabIdPEnable",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "GitHubIdPEnable",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "BitbucketIdPEnable",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "BitbucketWorkspaceName",
+    "ParameterValue": "yourworkspace"
+  },
+  {
+    "ParameterKey": "BitbucketWorkspaceUUID",
+    "ParameterValue": "unique-workspace-uuid-without-curly-braces"
+  }
+]

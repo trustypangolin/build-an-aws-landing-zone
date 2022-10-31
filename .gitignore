@@ -22,6 +22,7 @@ override.tf.json
 *_override.tf.json
 
 # Ecluding these specifically
+parameters.json
 *.tfvars
 remote_state.tf
 

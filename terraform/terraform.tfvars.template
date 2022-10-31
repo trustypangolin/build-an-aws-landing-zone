@@ -1,0 +1,13 @@
+# Unique Bootstrap Variables
+base_region = "ap-southeast-2"
+
+# Gitlab variables
+gitlab_idp = true
+
+# Github Variables
+github_idp = true
+
+# Bitbucket Variables
+bitbucket_idp           = true
+bitbucket_workspace     = "yourworkspace"
+bitbucket_workspaceuuid = "unique-workspace-uuid-without-curly-braces"

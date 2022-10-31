@@ -1,0 +1,128 @@
+---
+#====================================================================================================
+# Description : Create the IdP for CI/CD
+# Command Line:
+# aws cloudformation deploy                                    \
+#                    --stack-name bootstrap-idp                \
+#                    --template-file ./bootstrap-idp.yml       \
+#                    --capabilities CAPABILITY_NAMED_IAM       \
+#                    --tags "Environment=Landing Zone" --parameter-overrides file://parameters.json
+#====================================================================================================
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "AWS IAM IdP - CICD AWS Access"
+
+#====================================================================================================
+#                                             PARAMETERS
+#====================================================================================================
+Parameters:
+  # Add GitLab IdP
+  GitLabIdPEnable:
+    Type: String
+    Default: false
+    Description: Bootstrap the GitLab IdP
+    AllowedValues: [true, false]
+  GitLabIdPUrl:
+    Type: String
+    Default: "https://gitlab.com"
+    Description: Required for SelfHosting GitLab, Otherwise leave as default
+  GitLabIdPAud:
+    Type: String
+    Default: "https://gitlab.com"
+    Description: Required for SelfHosting GitLab, Otherwise leave as default
+
+  # Add Bitbucket IdP
+  BitbucketIdPEnable:
+    Type: String
+    Default: false
+    Description: Bootstrap the Bitbucket IdP
+    AllowedValues: [true, false]
+  BitbucketWorkspaceName:
+    Type: String
+    Default: yourworkspacename
+    Description: "The Bitbucket Workspace Name"
+  BitbucketWorkspaceUUID:
+    Type: String
+    Default: "the-workspace-uuid-here-without-curly-braces"
+    Description: The Workspace UUID
+
+  # Add GitHub IdP
+  GitHubIdPEnable:
+    Type: String
+    Default: false
+    Description: Bootstrap the GitHub IdP
+    AllowedValues: [true, false]
+
+#====================================================================================================
+#                                             METADATA
+#====================================================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Active IdP
+        Parameters:
+          - GitLabIdPEnable
+          - GitHubIdPEnable
+          - BitbucketIdPEnable
+      - Label:
+          default: Bitbucket Workspace (Only required for Bitbucket)
+        Parameters:
+          - BitbucketWorkspaceName
+          - BitbucketWorkspaceUUID
+      - Label:
+          default: GitLab SelfHosted (Only change defaults for SelfHosted GitLab)
+        Parameters:
+          - GitLabIdPUrl
+          - GitLabIdPAud
+
+#====================================================================================================
+#                                             Conditions
+#====================================================================================================
+Conditions:
+  # Create IdP
+  IsGitLabIdPEnabled: !Equals [!Ref GitLabIdPEnable, true]
+  IsBitbucketIdPEnabled: !Equals [!Ref BitbucketIdPEnable, true]
+  IsGitHubIdPEnabled: !Equals [!Ref GitHubIdPEnable, true]
+
+#====================================================================================================
+#                                             Resources
+#====================================================================================================
+Resources:
+  #====================================================================================================
+  #                                             GitLab OIDC
+  #====================================================================================================
+  GitLabOIDC:
+    Condition: IsGitLabIdPEnabled
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !Ref GitLabIdPUrl
+      ThumbprintList:
+        - 2284b06c017cfa97e2846c6e0821233f0d6a9aeb
+      ClientIdList:
+        - !Ref GitLabIdPAud
+
+  #====================================================================================================
+  #                                             Bitbucket OIDC
+  #====================================================================================================
+  BitbucketOIDC:
+    Condition: IsBitbucketIdPEnabled
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !Sub "https://api.bitbucket.org/2.0/workspaces/${BitbucketWorkspaceName}/pipelines-config/identity/oidc"
+      ThumbprintList:
+        - a031c46782e6e6c662c2c87c76da9aa62ccabd8e
+      ClientIdList:
+        - !Sub "ari:cloud:bitbucket::workspace/${BitbucketWorkspaceUUID}"
+
+  #====================================================================================================
+  #                                             GitHub OIDC
+  #====================================================================================================
+  GitHubOIDC:
+    Condition: IsGitHubIdPEnabled
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+      ClientIdList:
+        - sts.amazonaws.com
