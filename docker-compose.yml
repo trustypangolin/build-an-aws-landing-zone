@@ -1,0 +1,101 @@
+version: "3.3"
+services:
+  # BitBucket Runners
+  sox:
+    image: "docker-public.packages.atlassian.com/sox/atlassian/bitbucket-pipelines-runner:1"
+    container_name: bitbucket-runner-11c79eb5-1a7f-5285-a53c-185ec5630704
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
+    environment:
+      - ACCOUNT_UUID=${ACCOUNT_UUID}
+      - RUNNER_UUID=${RUNNER_UUID}
+      - RUNTIME_PREREQUISITES_ENABLED=true
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - WORKING_DIRECTORY=/tmp
+
+  # GitHub Runners
+  githubrunner:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    image: github.runner:latest
+    ports:
+      - "9001:9001"
+    volumes:
+      # - ./runner/logs:/tmp/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    environment:
+      - RUNNER_VERSION=${RUNNER_VERSION}
+      - GITORG=${GITORG}
+      - GITHUBTOKEN=${GITHUBTOKEN}
+
+  # GitLab Runners for Cloud and SelfHosted
+  dind:
+    image: docker:20-dind
+    restart: always
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    command:
+      - --storage-driver=overlay2
+
+  cloud-runner:
+    restart: always
+    image: registry.gitlab.com/gitlab-org/gitlab-runner:alpine
+    depends_on:
+      - dind
+    environment:
+      - DOCKER_HOST=tcp://dind:2375
+    volumes:
+      - ./runner/cloud:/etc/gitlab-runner:z
+
+  selfhosted-runner:
+    restart: always
+    image: registry.gitlab.com/gitlab-org/gitlab-runner:alpine
+    depends_on:
+      - dind
+    environment:
+      - DOCKER_HOST=tcp://dind:2375
+    volumes:
+      - ./runner/selfhosted:/etc/gitlab-runner:z
+
+  register-cloud:
+    restart: 'no'
+    image: registry.gitlab.com/gitlab-org/gitlab-runner:alpine
+    depends_on:
+      - dind
+    environment:
+      - CI_SERVER_URL=${CI_SERVER_URL}
+      - REGISTRATION_TOKEN=${REGISTRATION_TOKEN}
+    command:
+      - register
+      - --non-interactive
+      - --locked=false
+      - --name=CloudRunner
+      - --executor=docker
+      - --docker-image=docker:20-dind
+      - --docker-volumes=/var/run/docker.sock:/var/run/docker.sock
+    volumes:
+      - ./runner/cloud:/etc/gitlab-runner:z
+
+  register-selfhosted:
+    restart: 'no'
+    image: registry.gitlab.com/gitlab-org/gitlab-runner:alpine
+    depends_on:
+      - dind
+    environment:
+      - CI_SERVER_URL=${SH_CI_SERVER_URL}
+      - REGISTRATION_TOKEN=${SH_REGISTRATION_TOKEN}
+    command:
+      - register
+      - --non-interactive
+      - --locked=false
+      - --name=SelfHosted
+      - --executor=docker
+      - --docker-image=docker:20-dind
+      - --docker-volumes=/var/run/docker.sock:/var/run/docker.sock
+    volumes:
+      - ./runner/selfhosted:/etc/gitlab-runner:z
