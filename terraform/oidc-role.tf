@@ -73,8 +73,7 @@ data "aws_iam_policy_document" "trust_oidc" {
       condition {
         test = "StringLike"
         variable = format(
-          "arn:aws:iam::%s:oidc-provider/api.bitbucket.org/2.0/workspaces/%s/pipelines-config/identity/oidc:aud",
-          data.aws_caller_identity.current.account_id,
+          "api.bitbucket.org/2.0/workspaces/%s/pipelines-config/identity/oidc:aud",
           var.bitbucket_workspace
         )
         values = [format("ari:cloud:bitbucket::workspace/%s", var.bitbucket_workspaceuuid)]
