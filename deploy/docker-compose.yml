@@ -1,0 +1,14 @@
+version: "3.7"
+services:
+
+  amazon:
+    image: public.ecr.aws/amazonlinux/amazonlinux:2
+    volumes:
+      - ~/.aws:/root/.aws
+      - ./:/deploy
+
+  ubuntu:
+    image: public.ecr.aws/ubuntu/ubuntu:20.04
+    volumes:
+      - ~/.aws:/root/.aws
+      - ./:/deploy

@@ -1,0 +1,79 @@
+name: Workflow
+on:
+  workflow_call:
+    inputs:
+      role-name:
+        required: true
+        type: string
+      aws-region:
+        required: true
+        type: string
+    secrets:
+      AWS_ROOT_ACCOUNT:
+        required: true
+      ENCKEY:
+        required: true
+
+jobs:
+  authentication:
+    name: aws_authenticate
+    runs-on: [self-hosted]
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      role-name: ${{ inputs.role-name }}
+      aws-region: ${{ inputs.aws-region }}
+      AWS_ROOT_ACCOUNT: ${{ secrets.AWS_ROOT_ACCOUNT }}
+      ENCKEY: ${{ secrets.ENCKEY }}
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+
+      - name: Base Software Requirements
+        run: ./deploy/os_base.sh
+
+      - name: Legacy Auth
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: $ACTIONS_ID_TOKEN_REQUEST_TOKEN
+          ACTIONS_ID_TOKEN_REQUEST_URL: $ACTIONS_ID_TOKEN_REQUEST_URL
+          role_name: ${{ env.role-name }}
+          AWS_REGION: ${{ env.aws-region }}
+          AWS_ROOT_ACCOUNT: ${{ env.AWS_ROOT_ACCOUNT }}
+          ENCKEY: ${{ env.ENCKEY }}
+        run: |
+          ./deploy/aws_assumerole_oidc.sh
+          export $(cat credentials.env | xargs)
+          echo STS_RGN=$AWS_REGION             >> $GITHUB_ENV
+          echo STS_ID=$AWS_ACCESS_KEY_ID       >> $GITHUB_ENV
+          echo STS_KEY=$AWS_SECRET_ACCESS_KEY  >> $GITHUB_ENV
+          echo STS_TKN=$AWS_SESSION_TOKEN      >> $GITHUB_ENV
+          echo "::add-mask::$AWS_REGION"
+          echo "::add-mask::$AWS_ACCESS_KEY_ID"
+          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
+          echo "::add-mask::$AWS_SESSION_TOKEN"
+
+      - name: Test Legacy Connection to AWS
+        run: |
+          aws configure list
+          aws sts get-caller-identity
+        env:
+          AWS_REGION: ${{ env.STS_RGN }}
+          AWS_ACCESS_KEY_ID: ${{ env.STS_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.STS_KEY }}
+          AWS_SESSION_TOKEN: ${{ env.STS_TKN }}
+
+      # Github Actions method that replaces the aws_assumerole_oidc.sh script
+      - name: AWS credentials Bootstrap (GitHub Action)
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ROOT_ACCOUNT }}:role/${{ env.role-name }}
+          role-session-name: GitHubRunner-Action
+          aws-region: ${{ env.aws-region }}
+
+      - name: Test Action Connection to AWS
+        run: |
+          aws configure list
+          aws sts get-caller-identity

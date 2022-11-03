@@ -1,0 +1,19 @@
+image: public.ecr.aws/amazonlinux/amazonlinux:2
+stages:
+  - aws_authenticate
+
+# Need AWS credentials and a role to read the state
+aws_account_oidc:
+  stage: aws_authenticate
+  before_script:
+    - uname -v
+    - ./deploy/os_base.sh
+    - ./deploy/aws_assumerole_oidc.sh
+    - export $(cat credentials.env | xargs)
+    - cd terraform
+  script:
+    - aws sts get-caller-identity
+  artifacts:
+    expire_in: 2 hrs
+    paths:
+      - securecreds.enc

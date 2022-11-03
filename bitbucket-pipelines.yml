@@ -1,0 +1,21 @@
+image: atlassian/default-image:3
+
+pipelines:
+  default:
+    - step:
+        name: Authenticate to AWS
+        oidc: true
+        max-time: 5
+        # For SelfHosted Runners we need this
+        # runs-on:
+        #   - self.hosted
+        #   - linux
+        script:
+          - export role_name=foundation-oidc
+          - export AWS_REGION=ap-southeast-2
+          - ./deploy/os_base.sh
+          - ./deploy/aws_assumerole_oidc.sh
+          - export $(cat credentials.env | xargs)
+          - aws sts get-caller-identity
+        artifacts:
+          - securecreds.enc

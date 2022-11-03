@@ -1,0 +1,10 @@
+stages:
+  - triggers
+
+trigger_auth:
+  stage: triggers
+  trigger:
+    include: terraform/.gitlab-ci.yml
+  variables:
+    AWS_REGION: ap-southeast-2
+    role_name: foundation-oidc

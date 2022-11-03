@@ -1,0 +1,15 @@
+name: P4 Access Account
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  # Ensure the Organisation has all the required outputs for the Accounts
+  accessaws:
+    uses: ./.github/workflows/tf-account.yml
+    with:
+      role-name: foundation-oidc
+      aws-region: ap-southeast-2
+    secrets:
+      AWS_ROOT_ACCOUNT: ${{ secrets.AWS_ROOT_ACCOUNT }}
+      ENCKEY: ${{ secrets.ENCKEY }}
