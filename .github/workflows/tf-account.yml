@@ -67,7 +67,7 @@ jobs:
 
       # Github Actions method that replaces the aws_assumerole_oidc.sh script
       - name: AWS credentials Bootstrap (GitHub Action)
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ROOT_ACCOUNT }}:role/${{ env.role-name }}
           role-session-name: GitHubRunner-Action
